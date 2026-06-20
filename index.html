@@ -324,7 +324,7 @@ function startWakeWord() {
     }
   };
   wakeRecog.onerror = function() { isWakeListening = false; };
-  wakeRecog.onend = function() { isWakeListening = false; };
+  wakeRecog.onend = function() { isWakeListening = false; setTimeout(startWakeWord, 1000); };
   try { wakeRecog.start(); } catch(e) { isWakeListening = false; }
 }
  
@@ -379,5 +379,3 @@ window.addEventListener('load', function() { synth.getVoices(); });
 </script>
 </body>
 </html>
-
- 
