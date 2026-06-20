@@ -379,4 +379,7 @@ window.addEventListener('load', function() { synth.getVoices(); });
 </script>
 </body>
 </html>
+wakeRecog.onend = function() { isWakeListening = false; };
+wakeRecog.onend = function() { isWakeListening = false; setTimeout(startWakeWord, 1000); };
+
  
