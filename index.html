@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Jarvis</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
 <style>
@@ -11,14 +12,6 @@ html, body { width: 100%; min-height: 100vh; background: #080a10; font-family: '
 .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .bar-title { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 2px; }
 .bar-status { font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(100,255,180,0.6); letter-spacing: 1px; }
-#setup { padding: 20px 18px; display: flex; flex-direction: column; gap: 12px; }
-#setup p { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.6; }
-#setup input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; padding: 10px 12px; font-size: 12px; font-family: 'DM Mono', monospace; outline: none; width: 100%; }
-#setup input:focus { border-color: rgba(99,179,255,0.5); }
-#setup input::placeholder { color: rgba(255,255,255,0.2); }
-#initBtn { background: rgba(99,179,255,0.15); border: 1px solid rgba(99,179,255,0.3); border-radius: 10px; color: rgba(99,179,255,0.9); padding: 10px; font-size: 13px; cursor: pointer; }
-#initBtn:hover { background: rgba(99,179,255,0.25); }
-#main { display: none; flex-direction: column; }
 .mic-area { display: flex; flex-direction: column; align-items: center; padding: 24px 0 16px; gap: 14px; }
 .mic-wrap { position: relative; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; }
 .mic-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(99,179,255,0.15); animation: ring-idle 3s ease-in-out infinite; }
@@ -67,22 +60,15 @@ html, body { width: 100%; min-height: 100vh; background: #080a10; font-family: '
 <div id="app">
   <div class="top-bar">
     <span class="bar-title">JARVIS</span>
-    <span class="bar-status" id="alwaysOn">● ALWAYS ON</span>
+    <span class="bar-status">● ALWAYS ON</span>
   </div>
- 
-  <div id="setup">
-    <p>Enter your Groq API key. Free & unlimited. Stays in your browser only.</p>
-    <input type="password" id="apiKeyInput" placeholder="gsk_..."/>
-    <button id="initBtn" onclick="initJarvis()">Start Jarvis</button>
-    <p style="font-size:11px;color:rgba(255,255,255,0.18)">Free key at console.groq.com</p>
-  </div>
- 
-  <div id="main">
+
+  <div style="display:flex;flex-direction:column;">
     <div class="mic-area">
       <div class="mic-wrap">
         <div class="mic-ring r1" id="ring1"></div>
         <div class="mic-ring r2" id="ring2"></div>
-        <button id="micBtn" onclick="toggleManualMic()">
+        <button id="micBtn" onclick="toggleMic()">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="1.6" stroke-linecap="round">
             <rect x="9" y="2" width="6" height="11" rx="3"/>
             <path d="M5 10a7 7 0 0 0 14 0"/>
@@ -104,24 +90,25 @@ html, body { width: 100%; min-height: 100vh; background: #080a10; font-family: '
       </div>
       <div class="status-label" id="statusLabel">starting up...</div>
     </div>
- 
+
     <div class="chat-area" id="chatArea"></div>
- 
+
     <div class="input-row">
       <input id="textInput" type="text" placeholder="or type here..." onkeydown="if(event.key==='Enter')sendText()"/>
-      <button class="stop-btn" onclick="stopSpeaking()" title="Stop">
+      <button class="stop-btn" onclick="stopSpeaking()">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect width="12" height="12" rx="2"/></svg>
       </button>
       <button class="send-btn" onclick="sendText()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
       </button>
     </div>
-    <div class="wake-hint">always listening • say "jarvis" anytime</div>
+    <div class="wake-hint">say "jarvis" anytime • always listening</div>
   </div>
 </div>
- 
+
 <script>
-var JARVIS_KEY = '';
+var KEY = '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';
+var SYS = 'You are Jarvis, the personal AI assistant of Kenan, a young entrepreneur from Montenegro who loves Roblox, web design, business, and PC hardware. Talk like a real helpful smart friend. Be casual, direct, short answers unless he needs detail. Never say you cannot do something because you are an AI. Be real and natural.';
 var msgs = [];
 var isSpeaking = false;
 var isCommandMode = false;
@@ -131,324 +118,166 @@ var barTimer = null;
 var wakeRecog = null;
 var cmdRecog = null;
 var restartTimer = null;
- 
-var SYS = 'You are Jarvis, the personal AI assistant of Kenan, a young entrepreneur from Montenegro who loves Roblox, web design, business, and PC hardware. Talk like a real helpful smart friend. Be casual, direct, short answers unless he needs detail. Never say you cannot do something because you are an AI. Be real and natural.';
- 
-function initJarvis() {
-  var k = document.getElementById('apiKeyInput').value.trim();
-  if (!k || k.length < 10) { alert('Please enter your Anthropic API key'); return; }
-  JARVIS_KEY = k;
-  document.getElementById('setup').style.display = 'none';
-  var m = document.getElementById('main');
-  m.style.display = 'flex';
-  m.style.flexDirection = 'column';
-  synth.getVoices();
-  setTimeout(function() {
-    addMsg('jarvis', "Hey, Jarvis here. I'm always listening — just say my name.");
-    setTimeout(startWakeLoop, 1000);
-  }, 300);
-}
- 
-// WAKE WORD LOOP - always restarts itself
-function startWakeLoop() {
-  if (isSpeaking || isCommandMode || manualMode) {
-    // try again soon
-    clearTimeout(restartTimer);
-    restartTimer = setTimeout(startWakeLoop, 500);
-    return;
-  }
-  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-    setState('idle');
-    return;
-  }
-  try {
-    if (wakeRecog) { try { wakeRecog.abort(); } catch(e) {} }
-    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    wakeRecog = new SR();
-    wakeRecog.continuous = true;
-    wakeRecog.interimResults = true;
-    wakeRecog.lang = 'en-US';
-    setState('idle');
- 
-    wakeRecog.onresult = function(e) {
-      var t = '';
-      for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-      t = t.toLowerCase();
-      if (t.includes('jarvis')) {
-        try { wakeRecog.abort(); } catch(e2) {}
-        isCommandMode = true;
-        setState('wake');
-        setTimeout(startCommandMode, 400);
-      }
-    };
- 
-    wakeRecog.onerror = function(e) {
-      // silently restart on any error
-      clearTimeout(restartTimer);
-      restartTimer = setTimeout(startWakeLoop, 800);
-    };
- 
-    wakeRecog.onend = function() {
-      if (!isCommandMode && !manualMode) {
-        clearTimeout(restartTimer);
-        restartTimer = setTimeout(startWakeLoop, 300);
-      }
-    };
- 
-    wakeRecog.start();
-  } catch(e) {
-    clearTimeout(restartTimer);
-    restartTimer = setTimeout(startWakeLoop, 1000);
-  }
-}
- 
-function startCommandMode() {
-  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
-  try {
-    if (cmdRecog) { try { cmdRecog.abort(); } catch(e) {} }
-    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    cmdRecog = new SR();
-    cmdRecog.lang = 'en-US';
-    cmdRecog.interimResults = false;
-    cmdRecog.maxAlternatives = 1;
-    setState('listening');
- 
-    cmdRecog.onresult = function(e) {
-      var t = e.results[0][0].transcript.trim();
-      t = t.replace(/^(hey\s+jarvis|jarvis)[,\s]*/i, '').trim();
-      isCommandMode = false;
-      manualMode = false;
-      if (t) {
-        askJarvis(t);
-      } else {
-        setState('idle');
-        clearTimeout(restartTimer);
-        restartTimer = setTimeout(startWakeLoop, 300);
-      }
-    };
- 
-    cmdRecog.onerror = function() {
-      isCommandMode = false;
-      manualMode = false;
-      setState('idle');
-      clearTimeout(restartTimer);
-      restartTimer = setTimeout(startWakeLoop, 500);
-    };
- 
-    cmdRecog.onend = function() {
-      if (isCommandMode || manualMode) {
-        isCommandMode = false;
-        manualMode = false;
-        setState('idle');
-        clearTimeout(restartTimer);
-        restartTimer = setTimeout(startWakeLoop, 300);
-      }
-    };
- 
-    cmdRecog.start();
-  } catch(e) {
-    isCommandMode = false;
-    manualMode = false;
-    clearTimeout(restartTimer);
-    restartTimer = setTimeout(startWakeLoop, 500);
-  }
-}
- 
-function toggleManualMic() {
-  if (isCommandMode || manualMode) {
-    // cancel
-    isCommandMode = false;
-    manualMode = false;
-    if (cmdRecog) try { cmdRecog.abort(); } catch(e) {}
-    setState('idle');
-    clearTimeout(restartTimer);
-    restartTimer = setTimeout(startWakeLoop, 300);
-  } else {
-    stopSpeaking();
-    if (wakeRecog) try { wakeRecog.abort(); } catch(e) {}
-    manualMode = true;
-    isCommandMode = true;
-    setState('wake');
-    setTimeout(startCommandMode, 200);
-  }
-}
- 
+
 function setState(state) {
   var micBtn = document.getElementById('micBtn');
   var ring1 = document.getElementById('ring1');
   var ring2 = document.getElementById('ring2');
   var label = document.getElementById('statusLabel');
-  var states = ['listening','speaking','wake'];
-  micBtn.className = states.indexOf(state) >= 0 ? state : '';
-  ring1.className = 'mic-ring r1' + (state !== 'idle' ? ' ' + state : '');
-  ring2.className = 'mic-ring r2' + (state !== 'idle' ? ' ' + state : '');
-  var isLabeled = (state === 'listening' || state === 'speaking' || state === 'thinking' || state === 'wake');
-  label.className = 'status-label' + (isLabeled ? ' ' + state : '');
-  var labels = {
-    idle: 'always listening for "jarvis"',
-    listening: 'listening...',
-    speaking: 'speaking...',
-    thinking: 'thinking...',
-    wake: 'yeah?'
-  };
+  micBtn.className = (state==='listening'||state==='speaking'||state==='wake') ? state : '';
+  ring1.className = 'mic-ring r1' + (state!=='idle' ? ' '+state : '');
+  ring2.className = 'mic-ring r2' + (state!=='idle' ? ' '+state : '');
+  label.className = 'status-label' + (['listening','speaking','thinking','wake'].includes(state) ? ' '+state : '');
+  var labels = {idle:'say "jarvis" or tap mic',listening:'listening...',speaking:'speaking...',thinking:'thinking...',wake:'yeah?'};
   label.textContent = labels[state] || '';
   animateBars(state);
 }
- 
+
 function animateBars(state) {
   clearInterval(barTimer);
   var bars = document.querySelectorAll('.w-bar');
   var def = [4,9,5,13,6,11,4,8,5];
-  bars.forEach(function(b) { b.classList.remove('active','spk','wk'); });
-  if (state === 'idle' || state === 'thinking') {
-    bars.forEach(function(b,i){ b.style.height = def[i]+'px'; });
-    return;
-  }
-  var cls = state === 'speaking' ? 'spk' : state === 'wake' ? 'wk' : 'active';
-  bars.forEach(function(b){ b.classList.add(cls); });
+  bars.forEach(function(b){b.classList.remove('active','spk','wk');});
+  if (state==='idle'||state==='thinking'){bars.forEach(function(b,i){b.style.height=def[i]+'px';});return;}
+  var cls = state==='speaking'?'spk':state==='wake'?'wk':'active';
+  bars.forEach(function(b){b.classList.add(cls);});
   barTimer = setInterval(function(){
-    bars.forEach(function(b){
-      b.style.height = Math.round(3 + Math.random() * (state==='speaking' ? 18 : 13)) + 'px';
-    });
-  }, state==='speaking' ? 85 : 130);
+    bars.forEach(function(b){b.style.height=Math.round(3+Math.random()*(state==='speaking'?18:13))+'px';});
+  }, state==='speaking'?85:130);
 }
- 
+
 function addMsg(role, text) {
   var c = document.getElementById('chatArea');
   var d = document.createElement('div');
-  d.className = 'msg ' + role;
+  d.className = 'msg '+role;
   d.textContent = text;
   c.appendChild(d);
   c.scrollTop = c.scrollHeight;
 }
- 
+
 function showThinking() {
   var c = document.getElementById('chatArea');
   var d = document.createElement('div');
   d.className = 'msg jarvis thinking-msg'; d.id = 'thinking'; d.textContent = '...';
   c.appendChild(d); c.scrollTop = c.scrollHeight;
 }
-function removeThinking() { var e = document.getElementById('thinking'); if(e) e.remove(); }
- 
+function removeThinking(){var e=document.getElementById('thinking');if(e)e.remove();}
+
 function getBestVoice() {
   var voices = synth.getVoices();
   var priority = ['Google US English','Samantha','Alex','Microsoft Mark Online (Natural)','Google UK English Male','Daniel'];
-  for (var i=0; i<priority.length; i++) {
-    for (var j=0; j<voices.length; j++) {
-      if (voices[j].name === priority[i]) return voices[j];
-    }
-  }
-  for (var k=0; k<voices.length; k++) {
-    if (voices[k].lang && voices[k].lang.startsWith('en')) return voices[k];
-  }
-  return voices[0] || null;
+  for (var i=0;i<priority.length;i++){for(var j=0;j<voices.length;j++){if(voices[j].name===priority[i])return voices[j];}}
+  for (var k=0;k<voices.length;k++){if(voices[k].lang&&voices[k].lang.startsWith('en'))return voices[k];}
+  return voices[0]||null;
 }
- 
+
 function speak(text) {
   synth.cancel();
   isSpeaking = true;
   setState('speaking');
   var clean = text.replace(/[*_`#\[\]]/g,'').trim();
-  var parts = clean.match(/[^.!?]+[.!?]*/g) || [clean];
+  var parts = clean.match(/[^.!?]+[.!?]*/g)||[clean];
   var i = 0;
   function next() {
-    if (i >= parts.length) {
-      isSpeaking = false;
-      isCommandMode = false;
-      manualMode = false;
-      setState('idle');
-      // restart wake loop after speaking
-      clearTimeout(restartTimer);
-      restartTimer = setTimeout(startWakeLoop, 500);
-      return;
-    }
+    if (i>=parts.length){isSpeaking=false;setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,500);return;}
     var utt = new SpeechSynthesisUtterance(parts[i++].trim());
-    utt.rate = 1.0; utt.pitch = 1.0; utt.volume = 1;
-    var v = getBestVoice(); if(v) utt.voice = v;
-    utt.onend = next;
-    utt.onerror = function() {
-      isSpeaking = false;
-      setState('idle');
-      clearTimeout(restartTimer);
-      restartTimer = setTimeout(startWakeLoop, 500);
-    };
+    utt.rate=1.0;utt.pitch=1.0;utt.volume=1;
+    var v=getBestVoice();if(v)utt.voice=v;
+    utt.onend=next;
+    utt.onerror=function(){isSpeaking=false;setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,500);};
     synth.speak(utt);
   }
   next();
 }
- 
-function stopSpeaking() {
-  synth.cancel();
-  isSpeaking = false;
-  setState('idle');
-  clearTimeout(restartTimer);
-  restartTimer = setTimeout(startWakeLoop, 300);
-}
- 
+
+function stopSpeaking(){synth.cancel();isSpeaking=false;setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,300);}
+
 function askJarvis(text) {
-  if (!text || !text.trim()) return;
+  if (!text||!text.trim()) return;
   stopSpeaking();
-  addMsg('user', text);
-  msgs.push({role:'user', content:text});
-  if (msgs.length > 30) msgs = msgs.slice(-20);
-  setState('thinking');
-  showThinking();
- 
-  fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + JARVIS_KEY,
-      
-      
-    },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 600, messages: [{role:'system',content:SYS}].concat(msgs) })
+  addMsg('user',text);
+  msgs.push({role:'user',content:text});
+  if (msgs.length>30) msgs=msgs.slice(-20);
+  setState('thinking');showThinking();
+  fetch('https://api.groq.com/openai/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+KEY},
+    body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:600,messages:[{role:'system',content:SYS}].concat(msgs)})
   })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
+  .then(function(r){return r.json();})
+  .then(function(data){
     removeThinking();
-    if (data.error) {
-      addMsg('jarvis', 'Error: ' + (data.error.message || JSON.stringify(data.error)));
-      setState('idle');
-      clearTimeout(restartTimer);
-      restartTimer = setTimeout(startWakeLoop, 500);
-      return;
-    }
-    var reply = '';
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      reply = data.choices[0].message.content || '';
-    }
-    if (!reply) { setState('idle'); restartTimer = setTimeout(startWakeLoop, 500); return; }
-    msgs.push({role:'assistant', content:reply});
-    addMsg('jarvis', reply);
+    var reply=(data.choices&&data.choices[0]&&data.choices[0].message)?data.choices[0].message.content:'';
+    if(!reply){setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,500);return;}
+    msgs.push({role:'assistant',content:reply});
+    addMsg('jarvis',reply);
     speak(reply);
   })
-  .catch(function(err) {
+  .catch(function(){
     removeThinking();
-    addMsg('jarvis', "Can't connect right now.");
-    setState('idle');
-    clearTimeout(restartTimer);
-    restartTimer = setTimeout(startWakeLoop, 500);
+    var err="Can't connect right now.";
+    addMsg('jarvis',err);speak(err);
   });
 }
- 
-function sendText() {
-  var inp = document.getElementById('textInput');
-  var t = inp.value.trim(); inp.value = '';
-  if (t) { isCommandMode = false; manualMode = false; askJarvis(t); }
+
+function sendText(){var inp=document.getElementById('textInput');var t=inp.value.trim();inp.value='';if(t){isCommandMode=false;manualMode=false;askJarvis(t);}}
+
+function startWakeLoop() {
+  if (isSpeaking||isCommandMode||manualMode){clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,500);return;}
+  if (!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)) return;
+  try {
+    if (wakeRecog){try{wakeRecog.abort();}catch(e){}}
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    wakeRecog=new SR();wakeRecog.continuous=true;wakeRecog.interimResults=true;wakeRecog.lang='en-US';
+    setState('idle');
+    wakeRecog.onresult=function(e){
+      var t='';for(var i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;
+      t=t.toLowerCase();
+      if(t.includes('jarvis')){try{wakeRecog.abort();}catch(e2){}isCommandMode=true;setState('wake');setTimeout(startCommandMode,800);}
+    };
+    wakeRecog.onerror=function(){clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,800);};
+    wakeRecog.onend=function(){if(!isCommandMode&&!manualMode){clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,300);}};
+    wakeRecog.start();
+  } catch(e){clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,1000);}
 }
- 
-// Keep synth voices loaded
-synth.onvoiceschanged = function() { synth.getVoices(); };
-window.addEventListener('load', function() { synth.getVoices(); });
- 
-// Wake lock - prevent tab from sleeping
-if ('wakeLock' in navigator) {
-  navigator.wakeLock.request('screen').catch(function(){});
+
+function startCommandMode() {
+  if (!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)) return;
+  try {
+    if(cmdRecog){try{cmdRecog.abort();}catch(e){}}
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    cmdRecog=new SR();cmdRecog.lang='en-US';cmdRecog.interimResults=false;cmdRecog.maxAlternatives=1;
+    setState('listening');
+    cmdRecog.onresult=function(e){
+      var t=e.results[0][0].transcript.trim().replace(/^(hey\s+jarvis|jarvis)[,\s]*/i,'').trim();
+      isCommandMode=false;manualMode=false;
+      if(t)askJarvis(t);else{setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,300);}
+    };
+    cmdRecog.onerror=function(){isCommandMode=false;manualMode=false;setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,500);};
+    cmdRecog.onend=function(){if(isCommandMode||manualMode){isCommandMode=false;manualMode=false;setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,300);}};
+    cmdRecog.start();
+  } catch(e){isCommandMode=false;manualMode=false;clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,500);}
 }
+
+function toggleMic() {
+  if(isCommandMode||manualMode){isCommandMode=false;manualMode=false;if(cmdRecog)try{cmdRecog.abort();}catch(e){}setState('idle');clearTimeout(restartTimer);restartTimer=setTimeout(startWakeLoop,300);}
+  else{stopSpeaking();if(wakeRecog)try{wakeRecog.abort();}catch(e){}manualMode=true;isCommandMode=true;setState('wake');setTimeout(startCommandMode,200);}
+}
+
+synth.onvoiceschanged=function(){synth.getVoices();};
+window.addEventListener('load',function(){
+  synth.getVoices();
+  setTimeout(function(){
+    addMsg('jarvis',"Hey, Jarvis here. Say my name anytime and I'll answer.");
+    setTimeout(startWakeLoop,800);
+  },400);
+});
+
+if('wakeLock' in navigator){navigator.wakeLock.request('screen').catch(function(){});}
 </script>
 </body>
 </html>
+
  
 
 
